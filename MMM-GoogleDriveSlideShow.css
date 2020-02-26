@@ -1,0 +1,12 @@
+#gDriveSlideShow {
+	background-size:cover; /* or use 'contain' for your purpose */
+	background-repeat:no-repeat;
+	background-position:center;
+	transition: opacity 1s ease 1s;
+  }
+  
+  .region.fullscreen #gDriveSlideShow {
+	position:absolute;
+	top:0;
+	left:0;
+  }
