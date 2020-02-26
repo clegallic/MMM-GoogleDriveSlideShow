@@ -4,6 +4,7 @@ Module.register("MMM-GoogleDriveSlideShow", {
 		rootFolderId: "root", // Google Drive root folder id, or 'root' for root folder
 		maxFolders: 30, // Maximum number of folders to scan
 		maxResults: 10, // Maximum of images to load
+		listenToNotification: null,  // Change image only when this notification is received. Automatic refresh otherwise if null
 		refreshDriveDelayInSeconds: 24 * 3600, // How often Google Drive cache is refresh (fetch new photos)
 		refreshSlideShowIntervalInSeconds: 10, // How often the image on the slideshow is refreshed
 		showWidth: "100%", // how large the photo will be shown as.
@@ -11,7 +12,8 @@ Module.register("MMM-GoogleDriveSlideShow", {
 		minWidth: "800px", // how large the photo will be shown as.
 		minHeight: "600px",
 		opacity: 1, // resulting image opacity. Consider reducing this value if you are using this module as a background picture frame
-		mode: "contain", // "cover" or "contain"
+		mode: "contain", // "cover" or "contain",
+		debug: false, // To display or not debug message in logs
 	},
 
 	getStyles: function () {
@@ -63,9 +65,12 @@ Module.register("MMM-GoogleDriveSlideShow", {
 	},
 
 	notificationReceived: function(sender, notification, payload) {
-		switch(notification) {
-		case "DOM_OBJECTS_CREATED":
-			break;
+		if(this.listenToNotification){
+			switch(notification) {
+			case this.listenToNotification:
+				this.sendSocketNotification("REQUEST_NEW_IMAGE", null);
+				break;
+			}
 		}
 	}
 });

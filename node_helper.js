@@ -18,6 +18,7 @@ module.exports = NodeHelper.create({
 		maxResults: 10,
 		refreshDriveDelayInSeconds: 24 * 3600,
 		refreshSlideShowIntervalInSeconds: 10,
+		debug: false
 	},
 
 	alreadySentPhotoIds: [], // Array of images already sent to the MM
@@ -57,7 +58,7 @@ module.exports = NodeHelper.create({
 			if("random" == photoId){
 				photoId = await this.getRandomPhoto();
 			}
-			this.log(photoId);
+			this.debug(photoId);
 			this.gDriveService.files
 				.get({fileId: photoId, alt: "media"}, {responseType: "stream"})
 				.then(response => {
@@ -68,12 +69,19 @@ module.exports = NodeHelper.create({
 	},
 
 	socketNotificationReceived: async function(notification, payload) {
-		console.log(payload);
 		switch(notification) {
 		  case "INIT":
 			this.config = payload;
+			this.debug("DEBUG IS ACTIVE");
+			this.debug(this.config);
 			await this.broadcastRandomPhoto();
-			this.broadcastTimer = setInterval(async () => await this.broadcastRandomPhoto(), this.config.refreshSlideShowIntervalInSeconds * 1000);
+			if(this.config.listenToNotification == null){
+				this.broadcastTimer = setInterval(async () => await this.broadcastRandomPhoto(), this.config.refreshSlideShowIntervalInSeconds * 1000);
+			}
+			break;
+		case "REQUEST_NEW_IMAGE":
+			this.broadcastRandomPhoto();
+			break;
 		}
 	},
 
@@ -93,6 +101,12 @@ module.exports = NodeHelper.create({
 
 	log: function(message){
 		console.log(`${this.name} : ${message}`);
+	},
+
+	debug: function(message){
+		if(this.config.debug){
+			this.log(`[DEBUG] ${message}`);
+		}
 	},
 
 	readAuthenticationFiles: function() {
@@ -198,7 +212,7 @@ module.exports = NodeHelper.create({
 			};
 		}
 
-		if(alreadyWalked.length % 10 === 0) {this.log(`${alreadyWalked.length} folders found`);}
+		if(alreadyWalked.length % 10 === 0) {this.debug(`${alreadyWalked.length} folders found`);}
 		return folders;
 	},
 
@@ -209,7 +223,7 @@ module.exports = NodeHelper.create({
 		let iterations = folderIds.length / maxFoldersPerQuery;
 
 		for(let i = 0; i < iterations; i ++){
-			this.log(`Query for photos : iteration ${i + 1}`);
+			this.debug(`Query for photos : iteration ${i + 1}`);
 			let range = folderIds.slice(i * maxFoldersPerQuery, (i + 1) * maxFoldersPerQuery);
 			let parentsQuery = range.map(folderId => `'${folderId}' in parents`).join(" or ");
 			let pageToken;
@@ -223,7 +237,7 @@ module.exports = NodeHelper.create({
 				let max = Math.min(limits - results.length, response.data.files.length);
 				results = results.concat(response.data.files.splice(0,max).map(entry => entry.id));
 				if(max < response.data.files.length) {pageToken = null;}
-				this.log(`${results.length} photos retrieved`);
+				this.debug(`${results.length} photos retrieved`);
 			} while (pageToken);
 			if(results.length === limits) {break;}
 		}
