@@ -64,10 +64,10 @@ Module.register("MMM-GoogleDriveSlideShow", {
 		}
 	},
 
-	notificationReceived: function(sender, notification, payload) {
-		if(this.listenToNotification){
+	notificationReceived: function(notification, payload, sender) {
+		if(this.config.listenToNotification){
 			switch(notification) {
-			case this.listenToNotification:
+			case this.config.listenToNotification:
 				this.sendSocketNotification("REQUEST_NEW_IMAGE", null);
 				break;
 			}
