@@ -94,7 +94,7 @@ module.exports = NodeHelper.create({
 	},
 
 	startSlideShow: async function(firstLaunch){
-		this.log.debug("Starting slideshow. First time ? " + (firstLaunch === true));
+		this.debug("Starting slideshow. First time ? " + (firstLaunch === true));
 		if(!this.config.preloadNextOnStop || firstLaunch){
 			this.broadcastRandomPhoto();
 		}
@@ -104,7 +104,7 @@ module.exports = NodeHelper.create({
 	},
 
 	stopSlideShow: function(){
-		this.log.debug("Slidshow stopped");
+		this.debug("Slidshow stopped");
 		clearInterval(this.broadcastTimer);
 		if(this.config.preloadNextOnStop){
 			this.broadcastRandomPhoto();
