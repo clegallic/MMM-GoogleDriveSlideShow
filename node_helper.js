@@ -5,6 +5,7 @@ const fs = require("fs");
 const readFile = promisify(fs.readFile);
 const writeFile = promisify(fs.writeFile);
 const unlink = promisify(fs.unlink);
+const https = require("https");
 
 const CACHE_FILE_PATH = ".cache";
 const G_CREDENTIALS_FILE_PATH = "./secrets/credentials.json";
@@ -60,16 +61,23 @@ module.exports = NodeHelper.create({
 
 		this.expressApp.use("/" + this.name + "/file/:photoId", async (req, res, next) => {
 			let photoId = req.params.photoId;
-			if("random" == photoId){
-				photoId = await this.getRandomPhoto();
+			if("random" === photoId){
+				photo = await this.getRandomPhoto();
+				photoId = photo.id;
 			}
-			this.debug(photoId);
-			this.gDriveService.files
-				.get({fileId: photoId, alt: "media"}, {responseType: "stream"})
-				.then(response => {
-					res.writeHead(response.status, response.headers);
-					response.data.pipe(res);
+			this.debug("Displaying photo with ID " + photoId);
+			var response = await this.gDriveService.files.get({fileId: photoId, fields: "thumbnailLink"});
+			var thumbnailLink = response.data.thumbnailLink.replace("=s220","=s" + this.config.minWidth.replace("px",""));
+			var proxy = https.request(thumbnailLink, function (proxyRes) {
+				res.writeHead(proxyRes.statusCode, proxyRes.headers);
+				proxyRes.pipe(res, {
+					end: true
 				});
+			});
+			req.pipe(proxy, {
+				end: true
+			});
+
 		});
 	},
 
