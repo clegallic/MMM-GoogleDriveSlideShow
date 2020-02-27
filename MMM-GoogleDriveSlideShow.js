@@ -72,18 +72,18 @@ Module.register("MMM-GoogleDriveSlideShow", {
 		if(this.config.debug){
 			Log.info("Notification received :", notification, payload, sender);
 		}
-		if(this.config.listenToNotification){
-			switch(notification) {
-			case this.config.nextOnNotification:
-				this.sendSocketNotification("REQUEST_NEW_IMAGE", null);
-				break;
-			case this.config.stopOnNotification:
-				this.sendSocketNotification("STOP_SLIDESHOW", null);
-				break;
-			case this.config.startOnNotification:
-				this.sendSocketNotification("START_SLIDESHOW", null);
-				break;
-			}
+
+		switch(notification) {
+		case this.config.nextOnNotification:
+			this.sendSocketNotification("REQUEST_NEW_IMAGE", null);
+			break;
+		case this.config.stopOnNotification:
+			this.sendSocketNotification("STOP_SLIDESHOW", null);
+			break;
+		case this.config.startOnNotification:
+			this.sendSocketNotification("START_SLIDESHOW", null);
+			break;
 		}
+
 	}
 });
