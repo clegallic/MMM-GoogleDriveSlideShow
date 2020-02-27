@@ -4,7 +4,11 @@ Module.register("MMM-GoogleDriveSlideShow", {
 		rootFolderId: "root", // Google Drive root folder id, or 'root' for root folder
 		maxFolders: 30, // Maximum number of folders to scan
 		maxResults: 10, // Maximum of images to load
-		listenToNotification: null,  // Change image only when this notification is received. Automatic refresh otherwise if null
+		playMode: "AUTO", // Mode of play : AUTO (automatic) or NOTIFICATION (only on the notification configured "nextOnNotification")
+		nextOnNotification: null,  // Change image when this notification is received
+		stopOnNotification: null, // Stop slideshow when this notification is receveived
+		startOnNotification: null, // Start slideshow when this notification is received (or next photo if playMode = NOTIFICATION)
+		preloadNextOnStop: false, // Special configuration for PIR module, allowing to preload the next image just after the screen is off, to be ready when screen is on
 		refreshDriveDelayInSeconds: 24 * 3600, // How often Google Drive cache is refresh (fetch new photos)
 		refreshSlideShowIntervalInSeconds: 10, // How often the image on the slideshow is refreshed
 		showWidth: "100%", // how large the photo will be shown as.
@@ -35,8 +39,8 @@ Module.register("MMM-GoogleDriveSlideShow", {
 		return wrapper;
 	},
 
-	showImage: function(payload) {
-		var url = "/MMM-GoogleDriveSlideShow/file/" + payload;
+	showImage: function(imageId) {
+		var url = "/MMM-GoogleDriveSlideShow/file/" + imageId;
 		var image = document.getElementById("gDriveSlideShow");
 
 		image.style.opacity = 0;
@@ -65,10 +69,19 @@ Module.register("MMM-GoogleDriveSlideShow", {
 	},
 
 	notificationReceived: function(notification, payload, sender) {
+		if(this.config.debug){
+			Log.info("Notification received :", notification, payload, sender);
+		}
 		if(this.config.listenToNotification){
 			switch(notification) {
-			case this.config.listenToNotification:
+			case this.config.nextOnNotification:
 				this.sendSocketNotification("REQUEST_NEW_IMAGE", null);
+				break;
+			case this.config.stopOnNotification:
+				this.sendSocketNotification("STOP_SLIDESHOW", null);
+				break;
+			case this.config.startOnNotification:
+				this.sendSocketNotification("START_SLIDESHOW", null);
 				break;
 			}
 		}

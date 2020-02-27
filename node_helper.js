@@ -35,14 +35,19 @@ module.exports = NodeHelper.create({
 
 		await this.setupGoogleApiService();
 
-		this.expressApp.use("/" + this.name + "/random", async (req, res, next) => {
-			let photoId = await this.getRandomPhoto();
-			this.sendSocketNotification("NEW_IMAGE", photoId);
-			res.send({
-				"random" : photoId,
-				"cache" : this.cache.photos,
-				"sent" : this.alreadySentPhotoIds
-			});
+		this.expressApp.use("/" + this.name + "/next", async (req, res, next) => {
+			await this.broadcastRandomPhoto();
+			res.send("Next photo requested");
+		});
+
+		this.expressApp.use("/" + this.name + "/stop", async (req, res, next) => {
+			await this.stopSlideShow();
+			res.send("Slideshow stopped");
+		});
+
+		this.expressApp.use("/" + this.name + "/play", async (req, res, next) => {
+			this.startSlideShow();
+			res.send("Slideshow started");
 		});
 
 		this.expressApp.use("/" + this.name + "/cache/reset", async (req, res, next) => {
@@ -70,24 +75,49 @@ module.exports = NodeHelper.create({
 
 	socketNotificationReceived: async function(notification, payload) {
 		switch(notification) {
-		  case "INIT":
+		case "INIT":
 			this.config = payload;
 			this.debug("DEBUG IS ACTIVE");
 			this.debug(this.config);
-			await this.broadcastRandomPhoto();
-			if(this.config.listenToNotification == null){
-				this.broadcastTimer = setInterval(async () => await this.broadcastRandomPhoto(), this.config.refreshSlideShowIntervalInSeconds * 1000);
-			}
+			await this.startSlideShow(true);
 			break;
 		case "REQUEST_NEW_IMAGE":
 			this.broadcastRandomPhoto();
 			break;
+		case "STOP_SLIDESHOW":
+			this.stopSlideShow();
+			break;
+		case "START_SLIDESHOW":
+			await this.startSlideShow();
+			break;
 		}
 	},
 
+	startSlideShow: async function(firstLaunch){
+		this.log.debug("Starting slideshow. First time ? " + (firstLaunch === true));
+		if(!this.config.preloadNextOnStop || firstLaunch){
+			this.broadcastRandomPhoto();
+		}
+		if(this.config.playMode === "AUTO"){
+			this.broadcastTimer = setInterval(async () => await this.broadcastRandomPhoto(), this.config.refreshSlideShowIntervalInSeconds * 1000);
+		}
+	},
+
+	stopSlideShow: function(){
+		this.log.debug("Slidshow stopped");
+		clearInterval(this.broadcastTimer);
+		if(this.config.preloadNextOnStop){
+			this.broadcastRandomPhoto();
+		}
+	},
+
+	broadcastNewPhoto: async function(photo){
+		this.sendSocketNotification("NEW_IMAGE", photo.id);
+	},
+
 	broadcastRandomPhoto: async function(){
-		let photoId = await this.getRandomPhoto();
-		this.sendSocketNotification("NEW_IMAGE", photoId);
+		let photo = await this.getRandomPhoto();
+		await this.broadcastNewPhoto(photo);
 	},
 
 	setupGoogleApiService: async function(){
@@ -134,10 +164,10 @@ module.exports = NodeHelper.create({
 	},
 
 	createCache: async function(){
-		let photosId = await this.loadPhotosIds();
+		let photos = await this.loadPhotos();
 		this.cache = {
 			created: new Date().getTime(),
-			photos: photosId
+			photos: photos
 		};
 		await writeFile(`${this.path}/${CACHE_FILE_PATH}`, JSON.stringify(this.cache));
 	},
@@ -147,18 +177,23 @@ module.exports = NodeHelper.create({
 		await unlink(`${this.path}/${CACHE_FILE_PATH}`);
 	},
 
+	buildPhotoUrl: function(photo){
+		return photo.thumbnailLink.replace("=s200", "=s" + this.config.minWidth.replace("px",""));
+		//return photo.thumbnailLink;
+	},
+
 	getRandomPhoto: async function(){
 		let photos = await this.getPhotos();
 		let randomIndex = Math.floor(Math.random() * photos.length);
-		let randomPhotoId = photos[randomIndex];
+		let randomPhoto = photos[randomIndex];
 		this.cache.photos.splice(randomIndex,1);
 		// If all photos are sent, reload cache from file
 		if(this.cache.photos.length === 0){
 			await this.loadCache();
 			this.alreadySentPhotoIds = [];
 		}
-		this.alreadySentPhotoIds.push(randomPhotoId);
-		return randomPhotoId;
+		this.alreadySentPhotoIds.push(randomPhoto.id);
+		return randomPhoto;
 	},
 
 	getPhotos: async function() {
@@ -176,7 +211,7 @@ module.exports = NodeHelper.create({
 		if(needReload){
 			this.log("No cache file, or expired, (re)creating it...");
 			await this.createCache();
-			this.cache.photos = await this.cache.photos.filter(photoId => !this.alreadySentPhotoIds.includes(photoId));
+			this.cache.photos = await this.cache.photos.filter(photo=> !this.alreadySentPhotoIds.includes(photo.id));
 		}
 
 		return this.cache.photos;
@@ -230,12 +265,12 @@ module.exports = NodeHelper.create({
 			do {
 				const response = await this.gDriveService.files.list({
 					q: `(${parentsQuery}) and mimeType = 'image/jpeg'`,
-					fields: "nextPageToken, files(id, name)",
+					fields: "nextPageToken,  files(id,name,parents,thumbnailLink)",
 					pageToken: pageToken
 				});
 				pageToken = response.data.nextPageToken;
 				let max = Math.min(limits - results.length, response.data.files.length);
-				results = results.concat(response.data.files.splice(0,max).map(entry => entry.id));
+				results = results.concat(response.data.files.splice(0,max));
 				if(max < response.data.files.length) {pageToken = null;}
 				this.debug(`${results.length} photos retrieved`);
 			} while (pageToken);
@@ -244,11 +279,11 @@ module.exports = NodeHelper.create({
 		return results;
 	},
 
-	loadPhotosIds: async function(){
+	loadPhotos: async function(){
 		let debut = new Date();
 		let folderIds = await this.walkFolders(this.config.rootFolderId, this.config.maxFolders).catch(console.error);
-		let photosIds = await this.searchPhotos(folderIds, this.config.maxResults);
-		this.log((new Date().getTime() - debut.getTime()) / 1000 + " seconds", `${photosIds.length} photos (${folderIds.length} of ${this.config.maxFolders} folders scanned)`);
-		return photosIds;
+		let photos = await this.searchPhotos(folderIds, this.config.maxResults);
+		this.log((new Date().getTime() - debut.getTime()) / 1000 + " seconds", `${photos.length} photos (${folderIds.length} of ${this.config.maxFolders} folders scanned)`);
+		return photos;
 	}
 });
