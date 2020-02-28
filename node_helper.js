@@ -30,7 +30,9 @@ module.exports = NodeHelper.create({
 
 	gDriveService: null, // Google Drive API Service
 
-	broadcastTimer: null,
+	broadcastTimer: null, // Timer for next image broadcast
+
+	lastBroadcastDate: new Date(),
 
 	start: async function (){
 
@@ -82,6 +84,7 @@ module.exports = NodeHelper.create({
 	},
 
 	socketNotificationReceived: async function(notification, payload) {
+		this.debug("New notification received : " + notification);
 		switch(notification) {
 		case "INIT":
 			this.config = payload;
@@ -124,8 +127,13 @@ module.exports = NodeHelper.create({
 	},
 
 	broadcastRandomPhoto: async function(){
-		let photo = await this.getRandomPhoto();
-		await this.broadcastNewPhoto(photo);
+		if(new Date().getTime() - this.lastBroadcastDate.getTime() > 5000){ // Prevent two notifications to request image change to quickly (5 s mini between each)
+			let photo = await this.getRandomPhoto();
+			await this.broadcastNewPhoto(photo);
+			this.lastBroadcastDate = new Date();
+		} else {
+			this.debug("Throttle detected, skip new image request");
+		}
 	},
 
 	setupGoogleApiService: async function(){
