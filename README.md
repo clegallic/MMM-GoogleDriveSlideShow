@@ -77,3 +77,4 @@ npm run token:generate
 - Add option to choose mimetype of files to search
 - Detect and correct photo orientation when portait is displayed as landscape
 - Allow multiple root folders Ids
+- Prevent concurrent reloading of cache

@@ -12,6 +12,7 @@ Module.register("MMM-GoogleDriveSlideShow", {
 		refreshDriveDelayInSeconds: 24 * 3600, // How often Google Drive cache is refresh (fetch new photos)
 		refreshSlideShowIntervalInSeconds: 10, // How often the image on the slideshow is refreshed
 		maxWidth: "800",
+		maxHeight: "600",
 		theme: "whiteFrame", // Name of CSS class to use for theme : none, insetShadow or whiteFrame
 		opacity: 1, // resulting image opacity. Consider reducing this value if you are using this module as a background picture frame
 		debug: false, // To display or not debug message in logs
@@ -48,9 +49,17 @@ Module.register("MMM-GoogleDriveSlideShow", {
 				imageDiv.style.backgroundImage = "unset";
 				imageDiv.style.backgroundImage = "url('" + url + "')";
 				imageDiv.style.opacity = self.config.opacity;
-				var imageWidth = Math.min(imageInfo.imageMediaMetadata.width, self.config.maxWidth);
-				imageDiv.style.width = imageWidth + "px";
-				imageDiv.style.height = Math.round((imageInfo.imageMediaMetadata.height * imageWidth) / imageInfo.imageMediaMetadata.width)  + "px";;
+				var imageWidthRatio = imageInfo.imageMediaMetadata.width / self.config.maxWidth;
+				var imageHeightRatio = imageInfo.imageMediaMetadata.height / self.config.maxHeight;
+				if(imageHeightRatio > imageWidthRatio){
+					var height =  Math.min(imageInfo.imageMediaMetadata.height, self.config.maxHeight)
+					imageDiv.style.height = height + "px";
+					imageDiv.style.width = Math.round(imageInfo.imageMediaMetadata.width * height / imageInfo.imageMediaMetadata.height) + "px";
+				} else {
+					var width = Math.min(imageInfo.imageMediaMetadata.width, self.config.maxWidth);
+					imageDiv.style.width = width + "px";
+					imageDiv.style.height = Math.round(imageInfo.imageMediaMetadata.height * width / imageInfo.imageMediaMetadata.width) + "px";
+				}
 			};
 			bgImg.src = url;
 			var self = this;
