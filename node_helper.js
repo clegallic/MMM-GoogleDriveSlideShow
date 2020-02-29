@@ -32,7 +32,7 @@ module.exports = NodeHelper.create({
 
 	broadcastTimer: null, // Timer for next image broadcast
 
-	lastBroadcastDate: new Date(),
+	lastBroadcastDate: null,
 
 	start: async function (){
 
@@ -69,7 +69,7 @@ module.exports = NodeHelper.create({
 			}
 			this.debug("Displaying photo with ID " + photoId);
 			var response = await this.gDriveService.files.get({fileId: photoId, fields: "thumbnailLink"});
-			var thumbnailLink = response.data.thumbnailLink.replace("=s220","=s" + this.config.minWidth.replace("px",""));
+			var thumbnailLink = response.data.thumbnailLink.replace("=s220","=s" + this.config.maxWidth);
 			var proxy = https.request(thumbnailLink, function (proxyRes) {
 				res.writeHead(proxyRes.statusCode, proxyRes.headers);
 				proxyRes.pipe(res, {
@@ -123,11 +123,11 @@ module.exports = NodeHelper.create({
 	},
 
 	broadcastNewPhoto: async function(photo){
-		this.sendSocketNotification("NEW_IMAGE", photo.id);
+		this.sendSocketNotification("NEW_IMAGE", photo);
 	},
 
 	broadcastRandomPhoto: async function(){
-		if(new Date().getTime() - this.lastBroadcastDate.getTime() > 5000){ // Prevent two notifications to request image change to quickly (5 s mini between each)
+		if(!this.lastBroadcastDate || new Date().getTime() - this.lastBroadcastDate.getTime() > 5000){ // Prevent two notifications to request image change to quickly (5 s mini between each)
 			let photo = await this.getRandomPhoto();
 			await this.broadcastNewPhoto(photo);
 			this.lastBroadcastDate = new Date();
@@ -281,7 +281,7 @@ module.exports = NodeHelper.create({
 			do {
 				const response = await this.gDriveService.files.list({
 					q: `(${parentsQuery}) and mimeType = 'image/jpeg'`,
-					fields: "nextPageToken,  files(id,name,parents,thumbnailLink)",
+					fields: "nextPageToken,  files(id,name,imageMediaMetadata(width, height, rotation))",
 					pageToken: pageToken
 				});
 				pageToken = response.data.nextPageToken;

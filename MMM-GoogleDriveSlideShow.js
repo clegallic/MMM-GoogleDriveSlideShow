@@ -11,12 +11,9 @@ Module.register("MMM-GoogleDriveSlideShow", {
 		preloadNextOnStop: false, // Special configuration for PIR module, allowing to preload the next image just after the screen is off, to be ready when screen is on
 		refreshDriveDelayInSeconds: 24 * 3600, // How often Google Drive cache is refresh (fetch new photos)
 		refreshSlideShowIntervalInSeconds: 10, // How often the image on the slideshow is refreshed
-		showWidth: "100%", // how large the photo will be shown as.
-		showHeight: "100%",
-		minWidth: "800px", // how large the photo will be shown as.
-		minHeight: "600px",
+		maxWidth: "800",
+		theme: "whiteFrame", // Name of CSS class to use for theme : none, insetShadow or whiteFrame
 		opacity: 1, // resulting image opacity. Consider reducing this value if you are using this module as a background picture frame
-		mode: "contain", // "cover" or "contain",
 		debug: false, // To display or not debug message in logs
 	},
 
@@ -29,33 +26,34 @@ Module.register("MMM-GoogleDriveSlideShow", {
 	},
 
 	getDom: function() {
-		var wrapper = document.createElement("div");
-		wrapper.id = "gDriveSlideShow";
-		wrapper.style.width = this.config.showWidth;
-		wrapper.style.height = this.config.showHeight;
-		wrapper.style.minWidth = this.config.minWidth;
-		wrapper.style.minHeight = this.config.minHeight;
-		wrapper.style.backgroundSize = this.config.mode;
-		return wrapper;
+		var wrapperContainer = document.createElement("div");
+		wrapperContainer.id = "gDriveSlideShowContainer";
+		var imageDiv = document.createElement("div");
+		imageDiv.id = "gDriveSlideShow";
+		imageDiv.style.backgroundSize = this.config.mode;
+		if(this.config.theme != "none") { imageDiv.className = this.config.theme; }
+		wrapperContainer.appendChild(imageDiv);
+		return wrapperContainer;
 	},
 
-	showImage: function(imageId) {
-		var url = "/MMM-GoogleDriveSlideShow/file/" + imageId;
-		var image = document.getElementById("gDriveSlideShow");
+	showImage: function(imageInfo) {
+		var url = "/MMM-GoogleDriveSlideShow/file/" + imageInfo.id;
+		var imageDiv = document.getElementById("gDriveSlideShow");
 
-		image.style.opacity = 0;
-		setTimeout(()=>{
-			image.style.backgroundImage = "unset";
-			image.style.backgroundImage = "url('" + url + "')";
-			image.style.opacity = this.config.opacity;
-			if (this.config.mode == "hybrid") {
-				var rect = image.getBoundingClientRect();
-				var rr = ((rect.width / rect.height) > 1) ? "h" : "v";
-				var ir = ((payload.width / payload.height) > 1) ? "h" : "v";
-				image.style.backgroundSize = (rr == ir) ? "cover" : "contain";
-			} else {
-				image.style.backgroundSize = this.config.mode;
-			}
+		imageDiv.style.opacity = 0;
+
+		setTimeout(() => {
+			var bgImg = new Image();
+			bgImg.onload = function(){
+				imageDiv.style.backgroundImage = "unset";
+				imageDiv.style.backgroundImage = "url('" + url + "')";
+				imageDiv.style.opacity = self.config.opacity;
+				var imageWidth = Math.min(imageInfo.imageMediaMetadata.width, self.config.maxWidth);
+				imageDiv.style.width = imageWidth + "px";
+				imageDiv.style.height = Math.round((imageInfo.imageMediaMetadata.height * imageWidth) / imageInfo.imageMediaMetadata.width)  + "px";;
+			};
+			bgImg.src = url;
+			var self = this;
 		}, 2000);
 
 	},

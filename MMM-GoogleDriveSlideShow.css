@@ -1,12 +1,33 @@
+#gDriveSlideShowContainer {
+    display: block;
+    height: auto;
+    overflow: hidden;
+    padding: 40px;
+    text-align: center;
+    width: 100%;
+}
+
 #gDriveSlideShow {
+    display: inline-block;
+    margin: 0;
 	background-size:cover; /* or use 'contain' for your purpose */
 	background-repeat:no-repeat;
 	background-position:center;
+	background-size:cover;
 	transition: opacity 1s ease 1s;
-  }
-  
-  .region.fullscreen #gDriveSlideShow {
+}
+
+#gDriveSlideShow.insetShadow {
+	box-shadow: inset 0px 0px 30px 10px rgb(0, 0, 0);
+}
+
+#gDriveSlideShow.whiteFrame {
+	border: 20px white solid;
+	box-shadow: inset 0px 0px 10px 0px rgb(0, 0, 0);
+}
+
+.region.fullscreen #gDriveSlideShow {
 	position:absolute;
 	top:0;
 	left:0;
-  }
+}
