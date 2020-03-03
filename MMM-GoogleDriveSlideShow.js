@@ -1,15 +1,15 @@
 Module.register("MMM-GoogleDriveSlideShow", {
 
 	defaults: {
-		rootFolderId: "root", // Google Drive root folder id, or 'root' for root folder
-		maxFolders: 30, // Maximum number of folders to scan
-		maxResults: 10, // Maximum of images to load
+		rootFolderId: null, // Google Drive root folder id, or null for root folder
+		maxResults: 100, // Maximum of images to load from Google Drive search
+		maxFolders: 30, // Maximum number of folders to scan (when rootFolderId != null)
 		playMode: "AUTO", // Mode of play : AUTO (automatic) or NOTIFICATION (only on the notification configured "nextOnNotification")
 		nextOnNotification: null,  // Change image when this notification is received
 		stopOnNotification: null, // Stop slideshow when this notification is receveived
 		startOnNotification: null, // Start slideshow when this notification is received (or next photo if playMode = NOTIFICATION)
 		preloadNextOnStop: false, // Special configuration for PIR module, allowing to preload the next image just after the screen is off, to be ready when screen is on
-		refreshDriveDelayInSeconds: 24 * 3600, // How often Google Drive cache is refresh (fetch new photos)
+		refreshDriveDelayInSeconds: 24 * 3600, // How often Google Drive cache is refresh (fetch/update photos)
 		refreshSlideShowIntervalInSeconds: 10, // How often the image on the slideshow is refreshed
 		maxWidth: "800",
 		maxHeight: "600",

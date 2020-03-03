@@ -14,7 +14,7 @@ const G_TOKEN_FILE_PATH = "./secrets/token.json";
 module.exports = NodeHelper.create({
 
 	config: {
-		rootFolderId: "root",
+		rootFolderId: null,
 		maxFolders: 30,
 		maxResults: 10,
 		refreshDriveDelayInSeconds: 24 * 3600,
@@ -33,6 +33,8 @@ module.exports = NodeHelper.create({
 	broadcastTimer: null, // Timer for next image broadcast
 
 	lastBroadcastDate: null,
+
+	refreshCacheInProgress: false, // Is the cache currently refreshing ?
 
 	start: async function (){
 
@@ -89,7 +91,7 @@ module.exports = NodeHelper.create({
 		case "INIT":
 			this.config = payload;
 			this.debug("DEBUG IS ACTIVE");
-			this.debug(this.config);
+			this.debug(JSON.stringify(this.config, null, 2));
 			await this.startSlideShow(true);
 			break;
 		case "REQUEST_NEW_IMAGE":
@@ -180,12 +182,18 @@ module.exports = NodeHelper.create({
 	},
 
 	createCache: async function(){
+		if(this.refreshCacheInProgress){
+			this.debug("Cache already being build, skip this request");
+			return;
+		}
+		this.refreshCacheInProgress = true;
 		let photos = await this.loadPhotos();
 		this.cache = {
 			created: new Date().getTime(),
 			photos: photos
 		};
 		await writeFile(`${this.path}/${CACHE_FILE_PATH}`, JSON.stringify(this.cache));
+		this.refreshCacheInProgress = false;
 	},
 
 	resetCache: async function(){
@@ -267,39 +275,67 @@ module.exports = NodeHelper.create({
 		return folders;
 	},
 
-	searchPhotos: async function(folderIds, limits){
+	buildMimeTypeQuery: function() {
+		return "mimeType = 'image/jpeg'";
+	},
+
+	searchPhotosByFolders: async function(folderIds){
 
 		let results = [];
 		const maxFoldersPerQuery = 10;
-		let iterations = folderIds.length / maxFoldersPerQuery;
+		let iterations = Math.ceil(folderIds.length / maxFoldersPerQuery);
 
 		for(let i = 0; i < iterations; i ++){
 			this.debug(`Query for photos : iteration ${i + 1}`);
+
+			// Build query
 			let range = folderIds.slice(i * maxFoldersPerQuery, (i + 1) * maxFoldersPerQuery);
 			let parentsQuery = range.map(folderId => `'${folderId}' in parents`).join(" or ");
-			let pageToken;
-			do {
-				const response = await this.gDriveService.files.list({
-					q: `(${parentsQuery}) and mimeType = 'image/jpeg'`,
-					fields: "nextPageToken,  files(id,name,imageMediaMetadata(width, height, rotation))",
-					pageToken: pageToken
-				});
-				pageToken = response.data.nextPageToken;
-				let max = Math.min(limits - results.length, response.data.files.length);
-				results = results.concat(response.data.files.splice(0,max));
-				if(max < response.data.files.length) {pageToken = null;}
-				this.debug(`${results.length} photos retrieved`);
-			} while (pageToken);
-			if(results.length === limits) {break;}
+			let query = `(${parentsQuery}) and ${this.buildMimeTypeQuery()}`;
+
+			// Run query
+			let max = this.config.maxResults - results.length;
+			let r = await this.searchPhotosByQuery(query, max);
+			results = results.concat(r);
+			if(results.length === this.config.maxResults) {break;}
 		}
 		return results;
 	},
 
+	searchPhotosByQuery: async function(query, max){
+		let results = [];
+		let pageToken;
+		do {
+			const response = await this.gDriveService.files.list({
+				q: query,
+				fields: "nextPageToken,  files(id,name,imageMediaMetadata(width, height, rotation))",
+				pageToken: pageToken
+			});
+			pageToken = response.data.nextPageToken;
+			let limit = Math.min(max - results.length, response.data.files.length);
+			results = results.concat(response.data.files.splice(0,limit));
+			if(limit < response.data.files.length) {pageToken = null;}
+			this.debug(`${results.length} photos retrieved`);
+		} while (pageToken);
+		return results;
+	},
+
 	loadPhotos: async function(){
-		let debut = new Date();
-		let folderIds = await this.walkFolders(this.config.rootFolderId, this.config.maxFolders).catch(console.error);
-		let photos = await this.searchPhotos(folderIds, this.config.maxResults);
-		this.log((new Date().getTime() - debut.getTime()) / 1000 + " seconds", `${photos.length} photos (${folderIds.length} of ${this.config.maxFolders} folders scanned)`);
+		let start = new Date();
+		this.debug("Loading photos from Google Drive");
+		let photos;
+		if(!this.config.rootFolderId){
+			// Root => only query by mimetype
+			this.debug("Root folder => search files over all gDrive");
+			photos = await this.searchPhotosByQuery(this.buildMimeTypeQuery(), this.config.maxResults);
+		} else {
+			// Root folder provided : must discover sub folders before
+			this.debug(`Search subfolders of folder ${this.config.rootFolderId}`);
+			let folderIds = await this.walkFolders(this.config.rootFolderId, this.config.maxFolders).catch(console.error);
+			this.debug(`${folderIds.length} of maximum ${this.config.maxFolders} folders scanned`);
+			photos = await this.searchPhotosByFolders(folderIds);
+		}
+		this.log(`${photos.length} photos metadata retrieved in ${(new Date().getTime() - start.getTime()) / 1000} seconds`);
 		return photos;
 	}
 });

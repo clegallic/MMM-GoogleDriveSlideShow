@@ -72,7 +72,6 @@ npm run token:generate
 
 - Add rootFolderId in cache to compare any change and reset if any
 - Explain who to get the folderId in Google Drive
-- Only do a search in Drive if rootFolderId is left by default
 - Add option to display filename, date and parent folder name
 - Add option to choose mimetype of files to search
 - Detect and correct photo orientation when portait is displayed as landscape

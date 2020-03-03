@@ -17,7 +17,7 @@
 }
 
 #gDriveSlideShow.insetShadow {
-	box-shadow: inset 0px 0px 30px 10px rgb(0, 0, 0);
+	box-shadow: inset 0px 0px 30px 30px rgb(0, 0, 0);
 }
 
 #gDriveSlideShow.whiteFrame {
