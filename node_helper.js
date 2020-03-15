@@ -119,9 +119,6 @@ module.exports = NodeHelper.create({
 	stopSlideShow: function(){
 		this.debug("Slidshow stopped");
 		clearInterval(this.broadcastTimer);
-		if(this.config.preloadNextOnStop){
-			this.broadcastRandomPhoto();
-		}
 	},
 
 	broadcastNewPhoto: async function(photo){
@@ -129,7 +126,7 @@ module.exports = NodeHelper.create({
 	},
 
 	broadcastRandomPhoto: async function(){
-		if(!this.lastBroadcastDate || new Date().getTime() - this.lastBroadcastDate.getTime() > 5000){ // Prevent two notifications to request image change to quickly (5 s mini between each)
+		if(this.lastBroadcastDate == null|| (new Date().getTime() - this.lastBroadcastDate.getTime() > 5000)){ // Prevent two notifications to request image change to quickly (5 s mini between each)
 			let photo = await this.getRandomPhoto();
 			await this.broadcastNewPhoto(photo);
 			this.lastBroadcastDate = new Date();
