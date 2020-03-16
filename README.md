@@ -98,6 +98,9 @@ var config = {
 ### Inset Shadow
 ![Inset Shadow Theme Screenshot](.screenshots/theme_insetShadow.png)
 
+## Updates
+- 2020-03-16 : Handle `suspend()` and `resume()` functions
+
 ## TODO
 
 - Add rootFolderId in cache to compare any change and reset if any

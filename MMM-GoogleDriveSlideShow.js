@@ -90,6 +90,14 @@ Module.register("MMM-GoogleDriveSlideShow", {
 			this.sendSocketNotification("START_SLIDESHOW", null);
 			break;
 		}
+	},
 
+	suspend: function(){
+		this.sendSocketNotification("SUSPEND", null);
+	},
+
+	resume: function(){
+		this.sendSocketNotification("RESUME", null);
 	}
+
 });

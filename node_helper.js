@@ -36,6 +36,8 @@ module.exports = NodeHelper.create({
 
 	refreshCacheInProgress: false, // Is the cache currently refreshing ?
 
+	supended: false, // Is the module supended
+
 	start: async function (){
 
 		await this.setupGoogleApiService();
@@ -95,7 +97,9 @@ module.exports = NodeHelper.create({
 			await this.startSlideShow(true);
 			break;
 		case "REQUEST_NEW_IMAGE":
-			this.broadcastRandomPhoto();
+			if(!this.supended) {
+				await this.broadcastRandomPhoto();
+			}
 			break;
 		case "STOP_SLIDESHOW":
 			this.stopSlideShow();
@@ -103,12 +107,20 @@ module.exports = NodeHelper.create({
 		case "START_SLIDESHOW":
 			await this.startSlideShow();
 			break;
+		case "SUSPEND":
+			this.stopSlideShow();
+			this.supended = true;
+			break;
+		case "RESUME":
+			this.supended = false;
+			await this.startSlideShow();
+			break;
 		}
 	},
 
 	startSlideShow: async function(firstLaunch){
 		this.debug("Starting slideshow. First time ? " + (firstLaunch === true));
-		if(!this.config.preloadNextOnStop || firstLaunch){
+		if(firstLaunch){
 			this.broadcastRandomPhoto();
 		}
 		if(this.config.playMode === "AUTO"){
