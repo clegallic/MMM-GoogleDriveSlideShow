@@ -36,7 +36,7 @@ module.exports = NodeHelper.create({
 
 	refreshCacheInProgress: false, // Is the cache currently refreshing ?
 
-	supended: false, // Is the module supended
+	suspended: false, // Is the module suspended
 
 	start: async function (){
 
@@ -97,7 +97,7 @@ module.exports = NodeHelper.create({
 			await this.startSlideShow(true);
 			break;
 		case "REQUEST_NEW_IMAGE":
-			if(!this.supended) {
+			if(!this.suspended) {
 				await this.broadcastRandomPhoto();
 			}
 			break;
@@ -109,10 +109,10 @@ module.exports = NodeHelper.create({
 			break;
 		case "SUSPEND":
 			this.stopSlideShow();
-			this.supended = true;
+			this.suspended = true;
 			break;
 		case "RESUME":
-			this.supended = false;
+			this.suspended = false;
 			await this.startSlideShow();
 			break;
 		}
