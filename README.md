@@ -10,6 +10,7 @@ Inspired by [MMM-GooglePhotos](https://github.com/eouia/MMM-GooglePhotos/) and [
 
 1. Install Module
 ```sh
+cd modules
 git clone https://github.com/clegallic/MMM-GoogleDriveSlideShow.git
 cd MMM-GoogleDriveSlideShow
 npm install
