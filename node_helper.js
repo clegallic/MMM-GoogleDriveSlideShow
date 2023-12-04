@@ -285,7 +285,7 @@ module.exports = NodeHelper.create({
 	},
 
 	buildMimeTypeQuery: function() {
-		return "mimeType = 'image/jpeg'";
+		return "mimeType contains 'image/'";
 	},
 
 	searchPhotosByFolders: async function(folderIds){
